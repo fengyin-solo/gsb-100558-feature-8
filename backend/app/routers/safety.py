@@ -20,19 +20,27 @@ STATUSES = ["待签发", "已签发", "执行中", "已解除"]
 def list_entries(
     keyword: str | None = Query(default=None, description="按措施编号检索"),
     status: str | None = Query(default=None, description="待签发、已签发、执行中、已解除"),
+    equipment: str | None = Query(default=None, description="按涉及设备检索"),
     page: int = 1,
     size: int = 20,
 ) -> PageResult[dict]:
-    """按措施编号与状态过滤安全措施列表；没有数据时返回空页，不报错。"""
+    """按措施编号、状态与涉及设备过滤安全措施列表；没有数据时返回空页，不报错。"""
     if size > 200:
         raise HTTPException(status_code=400, detail="每页最多 200 条，请缩小分页范围")
-    items, total = service.list_entries(keyword=keyword, status=status, page=page, size=size)
+    items, total = service.list_entries(keyword=keyword, status=status, equipment=equipment, page=page, size=size)
     return PageResult(items=items, total=total, page=page, size=size)
+
+
+@router.get("/export")
+def export_entries() -> dict[str, Any]:
+    """导出安全措施清单：返回当前过滤条件下的全量数据。"""
+    items, total = service.list_entries(page=1, size=10000)
+    return {"module": "safety", "total": total, "items": items}
 
 
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
-    """读取单条安全措施票明细；不存在时给出可读的错误说明。"""
+    """读取单条安全措施票明细（详情页与检修计划列表共用同一份口径数据）。"""
     entry = service.get_entry(entry_id)
     if entry is None:
         raise HTTPException(status_code=404, detail=f"安全措施票 {entry_id} 不存在或已归档")
@@ -44,7 +52,7 @@ def create_entry(payload: EntryPayload) -> ActionResult:
     """登记一条安全措施票，缺字段时说明原因而不是静默丢弃。"""
     entry, missing = service.create_entry(payload.values)
     if missing:
-        return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
+        return ActionResult(ok=False, message=f"缺少或无效字段：{'、'.join(missing)}")
     return ActionResult(ok=True, message="安全措施票已登记", entry=entry)
 
 
@@ -56,10 +64,3 @@ def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
-
-
-@router.get("/export")
-def export_entries() -> dict[str, Any]:
-    """导出安全措施清单：返回当前过滤条件下的全量数据。"""
-    items, total = service.list_entries(page=1, size=10000)
-    return {"module": "safety", "total": total, "items": items}

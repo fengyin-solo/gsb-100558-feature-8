@@ -17,6 +17,7 @@ const SpareParts = () => import('@/views/spare_parts/index.vue')
 const Alarm = () => import('@/views/alarm/index.vue')
 const Dispatch = () => import('@/views/dispatch/index.vue')
 const Safety = () => import('@/views/safety/index.vue')
+const Duty = () => import('@/views/duty/index.vue')
 const Contract = () => import('@/views/contract/index.vue')
 const Report = () => import('@/views/report/index.vue')
 
@@ -40,6 +41,7 @@ const router = createRouter({
     { path: '/alarm', name: 'alarm', component: Alarm },
     { path: '/dispatch', name: 'dispatch', component: Dispatch },
     { path: '/safety', name: 'safety', component: Safety },
+    { path: '/duty', name: 'duty', component: Duty },
     { path: '/contract', name: 'contract', component: Contract },
     { path: '/report', name: 'report', component: Report },
   ],
