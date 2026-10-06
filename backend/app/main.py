@@ -36,3 +36,11 @@ def health() -> dict[str, object]:
 def overview() -> dict[str, object]:
     """运营概览：把各业务模块的待处理量汇总成看板卡片。"""
     return store.overview()
+
+
+@app.get("/api/identity")
+def identity() -> dict[str, object]:
+    """返回可切换的值班身份目录：前端据此选择操作人，写请求回传 X-Operator。"""
+    from app.org import DIRECTORY
+
+    return {"operators": DIRECTORY}

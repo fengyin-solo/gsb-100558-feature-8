@@ -11,7 +11,18 @@
     <main class="app-main">
       <header class="app-head">
         <span class="head-desc">面向光伏组件、逆变器、汇流箱、变压器、储能与升压站运行监视的集中式电站运维后台。</span>
-        <span class="head-user">当前值班：{{ store.operator }} · {{ store.shiftLabel }}</span>
+        <span class="head-user">
+          <label class="identity-pick">
+            当前值班：
+            <select :value="store.operator?.code ?? ''" @change="onSwitch">
+              <option value="">只读访客</option>
+              <option v-for="person in store.operators" :key="person.code" :value="person.code">
+                {{ person.name }} · {{ person.area }} · {{ person.role }}
+              </option>
+            </select>
+          </label>
+          <em class="shift-label">{{ store.shiftLabel }}</em>
+        </span>
       </header>
       <RouterView />
     </main>
@@ -19,9 +30,25 @@
 </template>
 
 <script setup lang="ts">
-import { useSessionStore } from '@/stores/session'
+import { onMounted } from 'vue'
+
+import { fetchJson } from '@/api/client'
+import { useSessionStore, type Operator } from '@/stores/session'
 
 const store = useSessionStore()
 
-const navItems = [{ label: "运营概览", path: "/" }, { label: "光伏阵列", path: "/pv_array" }, { label: "逆变器监视", path: "/inverter" }, { label: "汇流箱检测", path: "/combiner_box" }, { label: "变压器监视", path: "/transformer" }, { label: "储能电池组", path: "/energy_storage" }, { label: "升压站监视", path: "/boosting_station" }, { label: "关口计量", path: "/meter" }, { label: "环境监测站", path: "/environment" }, { label: "组件清洗", path: "/cleaning" }, { label: "巡视检查", path: "/patrol" }, { label: "缺陷管理", path: "/defect" }, { label: "检修计划", path: "/maintenance" }, { label: "备品备件", path: "/spare_parts" }, { label: "告警事件", path: "/alarm" }, { label: "调度指令", path: "/dispatch" }, { label: "安全措施", path: "/safety" }, { label: "运维合同", path: "/contract" }, { label: "运行月报", path: "/report" }]
+const navItems = [{ label: "运营概览", path: "/" }, { label: "光伏阵列", path: "/pv_array" }, { label: "逆变器监视", path: "/inverter" }, { label: "汇流箱检测", path: "/combiner_box" }, { label: "变压器监视", path: "/transformer" }, { label: "储能电池组", path: "/energy_storage" }, { label: "升压站监视", path: "/boosting_station" }, { label: "关口计量", path: "/meter" }, { label: "环境监测站", path: "/environment" }, { label: "组件清洗", path: "/cleaning" }, { label: "巡视检查", path: "/patrol" }, { label: "缺陷管理", path: "/defect" }, { label: "检修计划", path: "/maintenance" }, { label: "备品备件", path: "/spare_parts" }, { label: "告警事件", path: "/alarm" }, { label: "调度指令", path: "/dispatch" }, { label: "安全措施", path: "/safety" }, { label: "运维合同", path: "/contract" }, { label: "运行月报", path: "/report" }, { label: "值班工作台", path: "/workbench" }]
+
+function onSwitch(event: Event) {
+  store.switchOperator((event.target as HTMLSelectElement).value)
+}
+
+onMounted(async () => {
+  try {
+    const payload = await fetchJson<{ operators: Operator[] }>('/api/identity')
+    store.setOperators(payload.operators)
+  } catch {
+    // 身份目录取不到时保持访客身份，页面仍是只读
+  }
+})
 </script>

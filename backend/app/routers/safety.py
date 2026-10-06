@@ -12,23 +12,30 @@ router = APIRouter(prefix="/api/safety", tags=["安全措施"])
 
 service = SafetyService()
 
-LIST_FIELDS = ["措施编号", "措施类型", "涉及设备", "签发人", "执行人", "监护人", "有效期至", "措施状态"]
+LIST_FIELDS = ["措施编号", "措施类型", "涉及设备", "签发人", "执行人", "监护人", "监护队组", "有效期至", "措施状态"]
 STATUSES = ["待签发", "已签发", "执行中", "已解除"]
-
 
 @router.get("", response_model=PageResult[dict])
 def list_entries(
     keyword: str | None = Query(default=None, description="按措施编号检索"),
     status: str | None = Query(default=None, description="待签发、已签发、执行中、已解除"),
+    equipment: str | None = Query(default=None, description="按涉及设备检索，便于和检修计划对照"),
     page: int = 1,
     size: int = 20,
 ) -> PageResult[dict]:
-    """按措施编号与状态过滤安全措施列表；没有数据时返回空页，不报错。"""
+    """按措施编号、状态与设备过滤安全措施列表；没有数据时返回空页，不报错。"""
     if size > 200:
         raise HTTPException(status_code=400, detail="每页最多 200 条，请缩小分页范围")
-    items, total = service.list_entries(keyword=keyword, status=status, page=page, size=size)
+    items, total = service.list_entries(
+        keyword=keyword, status=status, equipment=equipment, page=page, size=size
+    )
     return PageResult(items=items, total=total, page=page, size=size)
 
+@router.get("/export")
+def export_entries() -> dict[str, Any]:
+    """导出安全措施清单：返回当前过滤条件下的全量数据。"""
+    items, total = service.list_entries(page=1, size=10000)
+    return {"module": "safety", "total": total, "items": items}
 
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
@@ -38,7 +45,6 @@ def get_entry(entry_id: int) -> dict:
         raise HTTPException(status_code=404, detail=f"安全措施票 {entry_id} 不存在或已归档")
     return entry
 
-
 @router.post("", response_model=ActionResult)
 def create_entry(payload: EntryPayload) -> ActionResult:
     """登记一条安全措施票，缺字段时说明原因而不是静默丢弃。"""
@@ -46,7 +52,6 @@ def create_entry(payload: EntryPayload) -> ActionResult:
     if missing:
         return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
     return ActionResult(ok=True, message="安全措施票已登记", entry=entry)
-
 
 @router.post("/{entry_id}/actions", response_model=ActionResult)
 def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
@@ -57,9 +62,3 @@ def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
 
-
-@router.get("/export")
-def export_entries() -> dict[str, Any]:
-    """导出安全措施清单：返回当前过滤条件下的全量数据。"""
-    items, total = service.list_entries(page=1, size=10000)
-    return {"module": "safety", "total": total, "items": items}
